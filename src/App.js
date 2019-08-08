@@ -2,21 +2,24 @@ import React, {Component} from 'react';
 import Web3 from 'web3';
 import './App.css';
 import {TODO_LIST_ABI, TODO_LIST_ADDRESS} from './config.js';
+import TodoList from './TodoList.js'
 
 class App extends Component {
 
   componentWillMount(){
     this.loadBlockchainData();
   }
-
   
   async loadBlockchainData() {
-    const web3 = new Web3(Web3.givenProvider || "http://localhost:7545")
+    //const web3 = new Web3(Web3.givenProvider || "http://localhost:7545")
+
+    const web3 = new Web3(Web3.givenProvider)
+    
     const accounts = await web3.eth.getAccounts()
-    this.setState({ account: accounts[0]})
+    const account = accounts[0]
+    this.setState({ account: account })
     const todolist = new web3.eth.Contract(TODO_LIST_ABI, TODO_LIST_ADDRESS)
     this.setState({ todolist })
-    console.log("todo list:", todolist)
     const taskCount = await todolist.methods.taskCount().call()
     this.setState({ taskCount })
     for(var i = 1; i <= taskCount; i++) {
@@ -25,7 +28,7 @@ class App extends Component {
         tasks: [...this.state.tasks, task]
       })
     }
-    console.log("tasks:", this.state.tasks)
+    this.setState({ loading: false })
   }
 
   constructor(props) {
@@ -33,10 +36,21 @@ class App extends Component {
     this.state = { 
       account: '',
       taskCount: 0,
-      tasks: []
+      tasks: [],
+      loading: true
     }
+
+    this.createTask = this.createTask.bind(this)
   }
 
+  createTask(content) {
+    this.setState({ loading: true })
+    this.state.todolist.methods.createTask(content).send({ from: this.state.account })
+    .once('receipt', (receipt) => {
+      console.log("receipt", receipt)
+      this.setState({ loading: false })
+    })
+  }
 
   render() {
     return (
@@ -51,30 +65,11 @@ class App extends Component {
         </nav>
         <div className="container-fluid">
           <div className="row">
-            <main role="main" className="col-lg-12 d-flex justify-content-center">
-              <div id="loader" className="text-center">
-                <p className="text-center">Loading...</p>
-              </div>
-              <div id="content">
-                <form>
-                  <input id="newTask" type="text" className="form-control" placeholder="Add task..." required />
-                  <input type="submit" hidden="" />
-                </form>
-                <ul id="taskList" className="list-unstyled">
-                  { this.state.tasks.map((task, key) => { 
-                    return( 
-                    <div className="taskTemplate" className="checkbox" key={key}>
-                      <label>
-                      <input type="checkbox" />
-                      <span className="content">{task.content}</span>
-                      </label>
-                    </div>
-                    )
-                  })}
-                </ul>
-                <ul id="completedTaskList" className="list-unstyled">
-                </ul>
-              </div>
+            <main role="main" className="col-lg-12 d-flex justify-content-center">              
+              { this.state.loading 
+                ? <div id="loader" className="text-center"><p className="text-center">Loading...</p></div>
+                : <TodoList tasks={this.state.tasks} createTask={this.createTask} /> 
+              }
             </main>
           </div>
         </div>
