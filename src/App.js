@@ -18,6 +18,7 @@ class App extends Component {
     const accounts = await web3.eth.getAccounts()
     const account = accounts[0]
     this.setState({ account: account })
+    console.log("account:", account)
     const todolist = new web3.eth.Contract(TODO_LIST_ABI, TODO_LIST_ADDRESS)
     this.setState({ todolist })
     const taskCount = await todolist.methods.taskCount().call()
@@ -41,11 +42,22 @@ class App extends Component {
     }
 
     this.createTask = this.createTask.bind(this)
+    this.toggleCompleted = this.toggleCompleted.bind(this)
   }
 
   createTask(content) {
     this.setState({ loading: true })
     this.state.todolist.methods.createTask(content).send({ from: this.state.account })
+    .once('receipt', (receipt) => {
+      console.log("receipt", receipt)
+      this.setState({ loading: false })
+    })
+  }
+
+  toggleCompleted(taskId) {
+    this.setState({ loading: true })
+    console.log("taskId:", taskId)
+    this.state.todolist.methods.toggleCompleted(taskId).send({ from: this.state.account })
     .once('receipt', (receipt) => {
       console.log("receipt", receipt)
       this.setState({ loading: false })
@@ -68,7 +80,7 @@ class App extends Component {
             <main role="main" className="col-lg-12 d-flex justify-content-center">              
               { this.state.loading 
                 ? <div id="loader" className="text-center"><p className="text-center">Loading...</p></div>
-                : <TodoList tasks={this.state.tasks} createTask={this.createTask} /> 
+                : <TodoList tasks={this.state.tasks} createTask={this.createTask} toggleCompleted={this.toggleCompleted} /> 
               }
             </main>
           </div>
