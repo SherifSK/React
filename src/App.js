@@ -18,7 +18,7 @@ class App extends Component {
     const accounts = await web3.eth.getAccounts()
     const account = accounts[0]
     this.setState({ account: account })
-    console.log("account:", account)
+    
     const todolist = new web3.eth.Contract(TODO_LIST_ABI, TODO_LIST_ADDRESS)
     this.setState({ todolist })
     const taskCount = await todolist.methods.taskCount().call()
@@ -30,6 +30,20 @@ class App extends Component {
       })
     }
     this.setState({ loading: false })
+  }
+
+  async updateTasksList() {
+    this.setState({ tasks: []})
+    
+    const taskCount = await this.state.todolist.methods.taskCount().call()
+    this.setState({ taskCount })
+
+    for(var i = 1; i <= this.state.taskCount; i++) {
+      const task = await this.state.todolist.methods.tasks(i).call()
+      this.setState({
+        tasks: [...this.state.tasks, task]
+      })
+    }
   }
 
   constructor(props) {
@@ -49,17 +63,16 @@ class App extends Component {
     this.setState({ loading: true })
     this.state.todolist.methods.createTask(content).send({ from: this.state.account })
     .once('receipt', (receipt) => {
-      console.log("receipt", receipt)
+      this.updateTasksList()
       this.setState({ loading: false })
     })
   }
 
   toggleCompleted(taskId) {
     this.setState({ loading: true })
-    console.log("taskId:", taskId)
     this.state.todolist.methods.toggleCompleted(taskId).send({ from: this.state.account })
     .once('receipt', (receipt) => {
-      console.log("receipt", receipt)
+      this.updateTasksList()
       this.setState({ loading: false })
     })
   }
